@@ -7,10 +7,13 @@ const Enquiry = require("./models/Enquiry");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Temporary in-memory database fallback if MONGODB_URI is not configured
+const mockDatabase = [];
+
 // Middleware
 app.use(express.json());
 
-// CORS configuration - Allow local development and custom production origin
+// CORS configuration
 const allowedOrigins = [
   "http://localhost:3000",
   process.env.FRONTEND_URL
@@ -19,36 +22,44 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
-      
-      // Check if origin is allowed or in development mode
       if (process.env.NODE_ENV === "development" || allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes("*")) {
         return callback(null, true);
       }
-      
-      // Otherwise default to allowing for ease of use or returning CORS check
       return callback(null, true);
     },
     credentials: true,
   })
 );
 
-// Database connection
+// Database connection with safe mock fallback
 const MONGODB_URI = process.env.MONGODB_URI;
+let isUsingMockDb = false;
 
 if (!MONGODB_URI) {
-  console.warn("WARNING: MONGODB_URI environment variable is missing inside .env. Please configure it to establish connection.");
+  isUsingMockDb = true;
+  console.log("------------------------------------------------------------------");
+  console.log("WARNING: MONGODB_URI is not set. Running with In-Memory Database Fallback.");
+  console.log("Data will be stored in-memory and reset when the server restarts.");
+  console.log("------------------------------------------------------------------");
+} else {
+  mongoose
+    .connect(MONGODB_URI)
+    .then(() => console.log("Connected to MongoDB Atlas successfully."))
+    .catch((err) => {
+      isUsingMockDb = true;
+      console.error("MongoDB Connection Error. Falling back to In-Memory Database.");
+      console.error("Error Detail:", err.message);
+    });
 }
-
-mongoose
-  .connect(MONGODB_URI || "mongodb://localhost:27017/travel_unbounded")
-  .then(() => console.log("Connected to MongoDB successfully."))
-  .catch((err) => console.error("Could not connect to MongoDB:", err.message));
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK", timestamp: new Date() });
+  res.status(200).json({ 
+    status: "OK", 
+    database: isUsingMockDb ? "In-Memory Fallback" : "MongoDB Atlas",
+    timestamp: new Date() 
+  });
 });
 
 // POST /api/enquiry - Create enquiry
@@ -66,7 +77,7 @@ app.post("/api/enquiry", async (req, res) => {
       preferredDestination,
     } = req.body;
 
-    // Server-side validation checks
+    // Server-side validation
     const errors = {};
 
     if (!fullName || typeof fullName !== "string" || fullName.trim().length < 3) {
@@ -117,7 +128,6 @@ app.post("/api/enquiry", async (req, res) => {
       errors.hotelCategory = "Hotel category must be Standard, Deluxe, or Luxury.";
     }
 
-    // Return 400 Bad Request if validation checks fail
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({
         success: false,
@@ -126,8 +136,7 @@ app.post("/api/enquiry", async (req, res) => {
       });
     }
 
-    // Save model record
-    const newEnquiry = new Enquiry({
+    const enquiryData = {
       fullName: fullName.trim(),
       countryCode,
       contactNumber,
@@ -137,17 +146,31 @@ app.post("/api/enquiry", async (req, res) => {
       hotelCategory,
       numberOfChildren: numberOfChildren ? parseInt(numberOfChildren) : 0,
       preferredDestination,
-    });
+    };
 
-    await newEnquiry.save();
+    let savedData;
+
+    if (isUsingMockDb) {
+      // Store in memory
+      savedData = {
+        _id: new mongoose.Types.ObjectId().toString(),
+        ...enquiryData,
+        createdAt: new Date()
+      };
+      mockDatabase.push(savedData);
+    } else {
+      // Store in MongoDB
+      const newEnquiry = new Enquiry(enquiryData);
+      savedData = await newEnquiry.save();
+    }
 
     return res.status(201).json({
       success: true,
       message: "Enquiry submitted successfully",
-      data: newEnquiry,
+      data: savedData,
     });
   } catch (error) {
-    console.error("Error saving enquiry inside Express backend:", error);
+    console.error("Error saving enquiry:", error);
     return res.status(500).json({
       success: false,
       message: "An internal server error occurred while processing your request.",
@@ -158,14 +181,20 @@ app.post("/api/enquiry", async (req, res) => {
 // GET /api/enquiry - List all enquiries (sorted newest first)
 app.get("/api/enquiry", async (req, res) => {
   try {
-    const enquiries = await Enquiry.find({}).sort({ createdAt: -1 });
+    let enquiries;
+    if (isUsingMockDb) {
+      enquiries = [...mockDatabase].sort((a, b) => b.createdAt - a.createdAt);
+    } else {
+      enquiries = await Enquiry.find({}).sort({ createdAt: -1 });
+    }
+    
     return res.status(200).json({
       success: true,
       count: enquiries.length,
       data: enquiries,
     });
   } catch (error) {
-    console.error("Error fetching enquiries inside Express backend:", error);
+    console.error("Error fetching enquiries:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch enquiries list.",
