@@ -2,13 +2,40 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 const Enquiry = require("./models/Enquiry");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Temporary in-memory database fallback if MONGODB_URI is not configured
-const mockDatabase = [];
+// Path to save local file database
+const ENQUIRIES_FILE = path.join(__dirname, "enquiries.json");
+
+// Helper function to read from local file database
+function readLocalFileDb() {
+  try {
+    if (fs.existsSync(ENQUIRIES_FILE)) {
+      const fileData = fs.readFileSync(ENQUIRIES_FILE, "utf8");
+      return JSON.parse(fileData);
+    }
+  } catch (err) {
+    console.error("Error reading local enquiries.json:", err.message);
+  }
+  return [];
+}
+
+// Helper function to write to local file database
+function writeLocalFileDb(data) {
+  try {
+    fs.writeFileSync(ENQUIRIES_FILE, JSON.stringify(data, null, 2), "utf8");
+  } catch (err) {
+    console.error("Error writing to local enquiries.json:", err.message);
+  }
+}
+
+// Initialize temporary database fallback
+let mockDatabase = readLocalFileDb();
 
 // Middleware
 app.use(express.json());
@@ -39,8 +66,8 @@ let isUsingMockDb = false;
 if (!MONGODB_URI) {
   isUsingMockDb = true;
   console.log("------------------------------------------------------------------");
-  console.log("WARNING: MONGODB_URI is not set. Running with In-Memory Database Fallback.");
-  console.log("Data will be stored in-memory and reset when the server restarts.");
+  console.log("WARNING: MONGODB_URI is not set. Running with local enquiries.json file database.");
+  console.log(`Submissions will be recorded to: ${ENQUIRIES_FILE}`);
   console.log("------------------------------------------------------------------");
 } else {
   mongoose
@@ -48,7 +75,7 @@ if (!MONGODB_URI) {
     .then(() => console.log("Connected to MongoDB Atlas successfully."))
     .catch((err) => {
       isUsingMockDb = true;
-      console.error("MongoDB Connection Error. Falling back to In-Memory Database.");
+      console.error("MongoDB Connection Error. Falling back to local file database.");
       console.error("Error Detail:", err.message);
     });
 }
@@ -57,7 +84,7 @@ if (!MONGODB_URI) {
 app.get("/health", (req, res) => {
   res.status(200).json({ 
     status: "OK", 
-    database: isUsingMockDb ? "In-Memory Fallback" : "MongoDB Atlas",
+    database: isUsingMockDb ? "Local enquiries.json File" : "MongoDB Atlas",
     timestamp: new Date() 
   });
 });
@@ -151,13 +178,17 @@ app.post("/api/enquiry", async (req, res) => {
     let savedData;
 
     if (isUsingMockDb) {
-      // Store in memory
+      // Re-read file to avoid out-of-sync overwrites
+      mockDatabase = readLocalFileDb();
+      
       savedData = {
         _id: new mongoose.Types.ObjectId().toString(),
         ...enquiryData,
         createdAt: new Date()
       };
+      
       mockDatabase.push(savedData);
+      writeLocalFileDb(mockDatabase);
     } else {
       // Store in MongoDB
       const newEnquiry = new Enquiry(enquiryData);
@@ -166,7 +197,7 @@ app.post("/api/enquiry", async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Enquiry submitted successfully",
+      message: "Enquiry submitted successfully and recorded",
       data: savedData,
     });
   } catch (error) {
@@ -183,7 +214,8 @@ app.get("/api/enquiry", async (req, res) => {
   try {
     let enquiries;
     if (isUsingMockDb) {
-      enquiries = [...mockDatabase].sort((a, b) => b.createdAt - a.createdAt);
+      mockDatabase = readLocalFileDb();
+      enquiries = [...mockDatabase].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     } else {
       enquiries = await Enquiry.find({}).sort({ createdAt: -1 });
     }
