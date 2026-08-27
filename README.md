@@ -1,103 +1,108 @@
-# Travel Unbounded — Full Stack Travel Company Website
+# Travel Unbounded — Decoupled Frontend & Backend Monorepo
 
-A production-style travel company website built for **Travel Unbounded** to showcase destination packages (India and International), share company locations/philosophies, and collect travel enquiries using a validated, database-backed pipeline.
+A decoupled, production-ready travel company application built for **Travel Unbounded** to capture travel bookings, view office locations, and explore destinations.
 
-## Live Demo & Repository
-- **GitHub Repository**: [https://github.com/sabihanjum/travel-unbounded](https://github.com/sabihanjum/travel-unbounded) *(Placeholder/Replace with actual)*
-- **Live Deployment (Vercel)**: [https://travel-unbounded.vercel.app](https://travel-unbounded.vercel.app) *(Placeholder/Replace with actual)*
+This project is structured as a monorepo consisting of:
+1. **Frontend**: Next.js client application (handles pages, layouts, user flows, and client-side form validations).
+2. **Backend**: Node.js/Express.js server application (handles Mongoose schemas, database integration, and strict server-side validation).
 
 ---
 
 ## Tech Stack
-* **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS (v4)
-* **Backend**: Next.js API Routes (Serverless)
-* **Database**: MongoDB Atlas via Mongoose
-* **Icons**: Lucide React
-* **Deployment**: Vercel
-
----
-
-## Features
-1. **Interactive Responsive Home Page**: Beautiful, immersive hero section, trust badges, and grid sections of Indian & International destination cards.
-2. **About Us Page**: Highlights the official company story, Core Values / Philosophy, and cards showing the three office locations (Bengaluru, Kochi, Nairobi).
-3. **Smart Booking Enquiry Form**:
-   * Dynamic auto-population based on query parameters (e.g. clicking "Enquire" on Kerala auto-selects Kerala in the dropdown).
-   * Robust client-side validation (regex email validation, numeric contact validation, date in the future, positive attendee checks).
-   * Full-screen/in-place custom confirmation loading and success UI states without raw alert boxes.
-4. **Robust Server-side API Validation**: An endpoint at `/api/enquiry` that validates all request inputs before persisting to safeguard the DB from direct calls.
-5. **Database Persistence**: Automatic connection pooling, schemas, and timestamps (`createdAt` / `updatedAt`) using Mongoose.
-6. **SEO Best Practices**: Customized titles and metadata descriptions on a per-route basis.
+* **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS (v4), Lucide Icons
+* **Backend**: Node.js, Express.js, Mongoose (MongoDB ODM), CORS, Dotenv
+* **Deployment**: Render (via unified Blueprints)
 
 ---
 
 ## Project Structure
 ```text
 Travel_unbounded/
-├── .env.example            # Environment variables template
-├── eslint.config.mjs       # ESLint configurations
-├── next.config.mjs         # Next.js options
-├── package.json            # Dependencies (next, react, mongoose, lucide-react)
-├── postcss.config.mjs      # PostCSS configuration for Tailwind v4
-├── public/                 # Static asset folder
-└── src/
-    ├── app/                # Next.js App Router folders
-    │   ├── api/            # Serverless API routes
-    │   │   └── enquiry/    # GET & POST endpoints for booking
-    │   │       └── route.js
-    │   ├── about/          # About page route
-    │   │   └── page.jsx
-    │   ├── contact/        # Plan Your Trip form route
-    │   │   └── page.jsx
-    │   ├── globals.css     # Global styles and Tailwind v4 imports
-    │   ├── layout.js       # Main RootLayout containing global Navbar and Footer
-    │   └── page.js         # Landing / Home page layout
-    ├── components/         # Reusable UI React Components
-    │   ├── BookingForm.jsx     # Booking form client component
-    │   ├── DestinationCard.jsx # Destination grid card component
-    │   ├── Footer.jsx          # Address and link bottom bar
-    │   └── Navbar.jsx          # Glassmorphism header with active link states
-    ├── data/               # Static dataset configurations
-    │   └── destinations.js # India and International static arrays
-    ├── lib/                # Database connector helpers
-    │   └── mongodb.js      # Global promise-cached Mongoose pooler
-    └── models/             # Database document Schemas
-        └── Enquiry.js      # Enquiry model with server constraints
+├── frontend/             # Next.js UI client (React, Tailwind)
+│   ├── src/
+│   │   ├── app/          # App router pages (Home, About, Contact)
+│   │   ├── components/   # Navbar, Footer, DestinationCard, BookingForm
+│   │   └── data/         # Static destinations JSON
+│   ├── package.json
+│   └── next.config.mjs
+│
+├── backend/              # Node/Express API server
+│   ├── models/           # Mongoose schemas (Enquiry)
+│   ├── server.js         # Entry script (Express application, CORS, DB)
+│   └── package.json
+│
+├── .gitignore            # Global ignore configuration
+├── README.md             # This document
+└── render.yaml           # Unified Render Monorepo Blueprint
 ```
 
 ---
 
-## Local Setup
+## Local Setup & Development
 
-### 1. Install Dependencies
-Make sure you are in the project folder and run:
-```bash
-npm install
-```
+To test the decoupled setup locally, you will run the backend on port `5000` and the frontend on port `3000`.
 
-### 2. Configure Environment Variables
-Create a file named `.env.local` in the root folder (this file is ignored by Git). Paste your MongoDB connection string:
-```env
-MONGODB_URI=your_mongodb_atlas_connection_string_here
-```
+### 1. Set Up the Backend
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install backend dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file inside the `backend/` folder:
+   ```env
+   PORT=5000
+   MONGODB_URI=your_mongodb_atlas_connection_uri
+   FRONTEND_URL=http://localhost:3000
+   ```
+4. Start the backend server:
+   ```bash
+   npm run dev
+   ```
+   *(Ensure MongoDB is running or connected. You should see "Connected to MongoDB successfully.")*
 
-### 3. Start Development Server
-```bash
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### 4. Build for Production
-To ensure compilation and type safety check:
-```bash
-npm run build
-```
+### 2. Set Up the Frontend
+1. Open a new terminal and navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install frontend dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env.local` file inside the `frontend/` folder:
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:5000
+   ```
+4. Start the frontend development server:
+   ```bash
+   npm run dev
+   ```
+5. Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ---
 
-## API Endpoints
+## Deployment (Render Blueprint)
+
+We have configured a unified `render.yaml` blueprint in the repository root. When you connect this repository to Render:
+
+1. **Log in** to your [Render Dashboard](https://dashboard.render.com/).
+2. Select **Blueprints** and click **New Blueprint Instance**.
+3. Connect your repository. Render will automatically detect `render.yaml` and configure:
+   - `travel-unbounded-api`: A Node.js Web Service for the Express backend.
+   - `travel-unbounded-web`: A Node.js Web Service for the Next.js frontend.
+4. Input your `MONGODB_URI` environment variable when prompted.
+5. Render will automatically link the backend's URL to the frontend's `NEXT_PUBLIC_API_URL` variable.
+6. Click **Approve**.
+
+---
+
+## API Documentation
 
 ### `POST /api/enquiry`
-Submits a booking enquiry.
+* **Target Host**: `http://localhost:5000` (or your deployed backend host)
 * **Payload Format (JSON)**:
   ```json
   {
@@ -112,32 +117,14 @@ Submits a booking enquiry.
     "numberOfChildren": 0
   }
   ```
-* **Success Response (201 Created)**:
+* **Response (201 Created)**:
   ```json
   {
     "success": true,
     "message": "Enquiry submitted successfully",
-    "data": { ...savedEnquiryDocument }
-  }
-  ```
-* **Error Response (400 Bad Request / 500 Server Error)**:
-  ```json
-  {
-    "success": false,
-    "message": "Server-side validation failed",
-    "errors": {
-      "email": "A valid email address is required.",
-      "dateOfTravel": "Date of travel must be in the future."
-    }
+    "data": { ...savedEnquiry }
   }
   ```
 
-### `GET /api/enquiry` (Bonus Feature)
-Retrieves all enquiries stored in the database, ordered by submission date (newest first). Used to power administrative interfaces.
-
----
-
-## Assumptions & Features Skipped
-1. **Static Destinations**: In accordance with project instructions, destination card databases were omitted in favor of static, performant JS objects (`src/data/destinations.js`).
-2. **Direct Booking Checkout**: Financial payment integrations (Razorpay/Stripe) are omitted since this is a booking-enquiry lead capture pipeline rather than a direct ticketing engine.
-3. **Admin Dashboard Front-End**: An admin panel was not fully built to stay focused on the core form-to-database pipeline validation. However, the GET API endpoint was built as a bonus feature to lay the groundwork.
+### `GET /api/enquiry`
+Retrieves all enquiries sorted by creation date descending.

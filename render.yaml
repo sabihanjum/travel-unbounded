@@ -1,10 +1,31 @@
 services:
+  # 1. Express.js Backend Service
   - type: web
-    name: travel-unbounded
+    name: travel-unbounded-api
     runtime: node
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    rootDirectory: backend
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
+      - key: PORT
+        value: 5000
       - key: MONGODB_URI
         placeholder: "Your MongoDB Atlas connection URI"
         sync: false
+      - key: FRONTEND_URL
+        placeholder: "Your deployed frontend URL"
+        sync: false
+
+  # 2. Next.js Frontend Web Service
+  - type: web
+    name: travel-unbounded-web
+    runtime: node
+    rootDirectory: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: travel-unbounded-api
+          type: web
+          property: host
