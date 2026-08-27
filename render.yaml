@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: travel-unbounded
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: MONGODB_URI
+        placeholder: "Your MongoDB Atlas connection URI"
+        sync: false
